@@ -991,10 +991,10 @@ module.exports = class BetterTrashPlugin extends Plugin {
 	async saveSettings() {
 		// Валидация числовых значений
 		if (typeof this.settings.deleteAfterHours !== 'number' || this.settings.deleteAfterHours < 1) {
-			this.settings.deleteAfterHours = 1;
+			this.settings.deleteAfterHours = DEFAULT_SETTINGS.deleteAfterHours;
 		}
 		if (typeof this.settings.checkIntervalMinutes !== 'number' || this.settings.checkIntervalMinutes < 1) {
-			this.settings.checkIntervalMinutes = 1;
+			this.settings.checkIntervalMinutes = DEFAULT_SETTINGS.checkIntervalMinutes;
 		}
 		// Валидация строк
 		if (!this.settings.trashFolder || !this.settings.trashFolder.trim()) {
@@ -1108,34 +1108,39 @@ class BetterTrashSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName(this.plugin.t('settings.deleteAfterHours'))
 			.setDesc(this.plugin.t('settings.deleteAfterHoursDesc'))
-			.addText((text) =>
+			.addText((text) => {
 				text
-					.setPlaceholder('72')
-					.setValue(String(this.plugin.settings.deleteAfterHours))
+					.setPlaceholder(String(DEFAULT_SETTINGS.deleteAfterHours))
+					.setValue(this.plugin.settings.deleteAfterHours !== undefined ? String(this.plugin.settings.deleteAfterHours) : '')
 					.onChange(async (value) => {
-						let parsed = parseInt(value, 10);
-						if (isNaN(parsed) || parsed < 1) parsed = 1;
-						text.setValue(String(parsed));
-							this.plugin.settings.deleteAfterHours = parsed;
-							await this.plugin.saveSettings();
-					})
-			);
+						// Не меняем значение сразу, только сохраняем в plugin.settings, если число
+						const trimmed = value.trim();
+						if (trimmed === '' || isNaN(Number(trimmed)) || Number(trimmed) < 1) {
+							this.plugin.settings.deleteAfterHours = undefined;
+						} else {
+							this.plugin.settings.deleteAfterHours = Number(trimmed);
+						}
+						await this.plugin.saveSettings();
+					});
+			});
 
 		new Setting(containerEl)
 			.setName(this.plugin.t('settings.checkInterval'))
 			.setDesc(this.plugin.t('settings.checkIntervalDesc'))
-			.addText((text) =>
+			.addText((text) => {
 				text
-					.setPlaceholder('30')
-					.setValue(String(this.plugin.settings.checkIntervalMinutes))
+					.setPlaceholder(String(DEFAULT_SETTINGS.checkIntervalMinutes))
+					.setValue(this.plugin.settings.checkIntervalMinutes !== undefined ? String(this.plugin.settings.checkIntervalMinutes) : '')
 					.onChange(async (value) => {
-						let parsed = parseInt(value, 10);
-						if (isNaN(parsed) || parsed < 1) parsed = 1;
-						text.setValue(String(parsed));
-							this.plugin.settings.checkIntervalMinutes = parsed;
-							await this.plugin.saveSettings();
-					})
-			);
+						const trimmed = value.trim();
+						if (trimmed === '' || isNaN(Number(trimmed)) || Number(trimmed) < 1) {
+							this.plugin.settings.checkIntervalMinutes = undefined;
+						} else {
+							this.plugin.settings.checkIntervalMinutes = Number(trimmed);
+						}
+						await this.plugin.saveSettings();
+					});
+			});
 
 		new Setting(containerEl)
 			.setName(this.plugin.t('settings.deleteUniqueAttachments'))
