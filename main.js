@@ -796,22 +796,23 @@ module.exports = class BetterTrashPlugin extends Plugin {
 
 		const propertiesToRemoveSet = new Set(propertiesToRemove);
 		const remainingLines = [];
-		let hasRemainingProperties = false;
 
 		for (let i = yamlStartIndex + 1; i < yamlEndIndex; i++) {
 			const line = lines[i];
 			const trimmedLine = line.trim();
-			if (trimmedLine === '') continue;
-
+			// Оставляем все строки, кроме явно удаляемых свойств
 			const colonIndex = line.indexOf(':');
 			if (colonIndex !== -1) {
 				const key = line.substring(0, colonIndex).trim();
 				if (!propertiesToRemoveSet.has(key)) {
 					remainingLines.push(line);
-					hasRemainingProperties = true;
 				}
+			} else {
+				remainingLines.push(line);
 			}
 		}
+
+		const hasRemainingProperties = remainingLines.length > 0;
 
 		// Если в YAML-блоке не осталось свойств, удаляем его полностью
 		if (!hasRemainingProperties) {
