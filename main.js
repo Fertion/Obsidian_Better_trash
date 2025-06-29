@@ -139,6 +139,16 @@ class TrashInfoComponent extends Component {
 	}
 
 	onload() {
+		// Удаляем все старые контейнеры trash-info-container в этом leaf/view
+		const oldViewContentEl = this.leaf.view.containerEl.querySelector('.view-content');
+		if (oldViewContentEl) {
+			const parent = oldViewContentEl.parentNode;
+			if (parent) {
+				const oldContainers = parent.querySelectorAll('.trash-info-container');
+				oldContainers.forEach(el => el.remove());
+			}
+		}
+
 		const deletionDate = new Date(this.entry.deletedAt);
 		const fullyDeleteTime = new Date(deletionDate);
 		fullyDeleteTime.setHours(fullyDeleteTime.getHours() + this.plugin.settings.deleteAfterHours);
