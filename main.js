@@ -16,6 +16,7 @@ const DEFAULT_SETTINGS = {
 	deletedAtProperty: 'deleted_at',
 	originalPathProperty: 'original_path',
 	language: 'en',
+	autoDeleteEnabled: true,
 };
 
 // Система локализации
@@ -40,7 +41,9 @@ const LANGUAGES = {
 			checkTrashButton: 'Проверить корзину',
 			checking: 'Проверяем...',
 			language: 'Язык интерфейса',
-			languageDesc: 'Выберите язык для интерфейса плагина'
+			languageDesc: 'Выберите язык для интерфейса плагина',
+			autoDeleteEnabled: 'Автоочистка корзины',
+			autoDeleteEnabledDesc: 'Если выключено, файлы не будут удаляться автоматически из корзины.',
 		},
 		notices: {
 			trashFolderNotSet: 'Папка для удалённых файлов не выбрана в настройках Better Trash.',
@@ -64,13 +67,15 @@ const LANGUAGES = {
 			trashCreateError: 'Ошибка при создании папки корзины:',
 			fileRestoredManual: 'Файл восстановлен:',
 			invalidDate: 'Некорректная дата:',
-			dateParseError: 'Ошибка парсинга даты'
+			dateParseError: 'Ошибка парсинга даты',
+			deleteNever: 'никогда',
 		},
 		ui: {
 			movedToTrash: 'Файл перемещен в корзину:',
 			willBeDeleted: 'Файл будет окончательно удален после:',
 			restore: 'Восстановить',
-			deletePermanently: 'Удалить безвозвратно'
+			deletePermanently: 'Удалить безвозвратно',
+			deleteNever: 'никогда',
 		}
 	},
 	en: {
@@ -93,7 +98,9 @@ const LANGUAGES = {
 			checkTrashButton: 'Check trash',
 			checking: 'Checking...',
 			language: 'Interface language',
-			languageDesc: 'Select language for plugin interface'
+			languageDesc: 'Select language for plugin interface',
+			autoDeleteEnabled: 'Auto-delete trash',
+			autoDeleteEnabledDesc: 'If disabled, files will not be automatically deleted from trash.',
 		},
 		notices: {
 			trashFolderNotSet: 'Trash folder is not selected in Better Trash settings.',
@@ -117,13 +124,15 @@ const LANGUAGES = {
 			trashCreateError: 'Error creating trash folder:',
 			fileRestoredManual: 'File restored:',
 			invalidDate: 'Invalid date:',
-			dateParseError: 'Date parsing error'
+			dateParseError: 'Date parsing error',
+			deleteNever: 'never',
 		},
 		ui: {
 			movedToTrash: 'File moved to trash:',
 			willBeDeleted: 'File will be permanently deleted after:',
 			restore: 'Restore',
-			deletePermanently: 'Delete permanently'
+			deletePermanently: 'Delete permanently',
+			deleteNever: 'never',
 		}
 	}
 };
@@ -167,7 +176,13 @@ class TrashInfoComponent extends Component {
 		const deletedEl = textContainer.createEl('p');
 		deletedEl.textContent = `${this.plugin.t('ui.movedToTrash')} ${deletionDate.toLocaleString()}`;
 		const deleteEl = textContainer.createEl('p');
-		deleteEl.textContent = `${this.plugin.t('ui.willBeDeleted')} ${fullyDeleteTime.toLocaleString()}`;
+		let deleteTimeText;
+		if (!this.plugin.settings.autoDeleteEnabled) {
+			deleteTimeText = this.plugin.t('ui.deleteNever');
+		} else {
+			deleteTimeText = fullyDeleteTime.toLocaleString();
+		}
+		deleteEl.textContent = `${this.plugin.t('ui.willBeDeleted')} ${deleteTimeText}`;
 
 		const buttonsContainer = container.createDiv();  // Контейнер для кнопок
 		buttonsContainer.style.display = 'flex';      // flexbox
@@ -288,6 +303,9 @@ module.exports = class BetterTrashPlugin extends Plugin {
 	startCheckInterval() {
 		// Останавливаем предыдущий интервал, если он есть
 		this.stopCheckInterval();
+
+		// Не запускаем интервал, если автоудаление выключено
+		if (!this.settings.autoDeleteEnabled) return;
 
 		// Первая проверка через 1 минуту после запуска
 		setTimeout(() => {
@@ -923,6 +941,8 @@ module.exports = class BetterTrashPlugin extends Plugin {
 	}
 
 	async checkTrashFiles() {
+		// Если автоудаление выключено, ничего не делаем
+		if (!this.settings.autoDeleteEnabled) return;
 		// Очищаем устаревшие записи в movedFiles
 		this.cleanupMovedFiles();
 
@@ -1085,6 +1105,7 @@ class BetterTrashSettingTab extends PluginSettingTab {
 				})
 			);
 
+		// Сначала выбор папки
 		new Setting(containerEl)
 			.setName(this.plugin.t('settings.trashFolder'))
 			.setDesc(this.plugin.t('settings.trashFolderDesc'))
@@ -1105,42 +1126,58 @@ class BetterTrashSettingTab extends PluginSettingTab {
 					})
 			);
 
-		new Setting(containerEl)
-			.setName(this.plugin.t('settings.deleteAfterHours'))
-			.setDesc(this.plugin.t('settings.deleteAfterHoursDesc'))
-			.addText((text) => {
-				text
-					.setPlaceholder(String(DEFAULT_SETTINGS.deleteAfterHours))
-					.setValue(this.plugin.settings.deleteAfterHours !== undefined ? String(this.plugin.settings.deleteAfterHours) : '')
+		// Затем переключатель автоочистки
+		const autoDeleteSetting = new Setting(containerEl)
+			.setName(this.plugin.t('settings.autoDeleteEnabled'))
+			.setDesc(this.plugin.t('settings.autoDeleteEnabledDesc'))
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.plugin.settings.autoDeleteEnabled)
 					.onChange(async (value) => {
-						// Не меняем значение сразу, только сохраняем в plugin.settings, если число
-						const trimmed = value.trim();
-						if (trimmed === '' || isNaN(Number(trimmed)) || Number(trimmed) < 1) {
-							this.plugin.settings.deleteAfterHours = undefined;
-						} else {
-							this.plugin.settings.deleteAfterHours = Number(trimmed);
-						}
+						this.plugin.settings.autoDeleteEnabled = value;
 						await this.plugin.saveSettings();
-					});
-			});
+						this.display(); // Перерисовать настройки для скрытия/показа полей
+					})
+			);
 
-		new Setting(containerEl)
-			.setName(this.plugin.t('settings.checkInterval'))
-			.setDesc(this.plugin.t('settings.checkIntervalDesc'))
-			.addText((text) => {
-				text
-					.setPlaceholder(String(DEFAULT_SETTINGS.checkIntervalMinutes))
-					.setValue(this.plugin.settings.checkIntervalMinutes !== undefined ? String(this.plugin.settings.checkIntervalMinutes) : '')
-					.onChange(async (value) => {
-						const trimmed = value.trim();
-						if (trimmed === '' || isNaN(Number(trimmed)) || Number(trimmed) < 1) {
-							this.plugin.settings.checkIntervalMinutes = undefined;
-						} else {
-							this.plugin.settings.checkIntervalMinutes = Number(trimmed);
-						}
-						await this.plugin.saveSettings();
-					});
-			});
+		// Поля времени хранения и интервала — только если автоочистка включена
+		if (this.plugin.settings.autoDeleteEnabled) {
+			new Setting(containerEl)
+				.setName(this.plugin.t('settings.deleteAfterHours'))
+				.setDesc(this.plugin.t('settings.deleteAfterHoursDesc'))
+				.addText((text) => {
+					text
+						.setPlaceholder(String(DEFAULT_SETTINGS.deleteAfterHours))
+						.setValue(this.plugin.settings.deleteAfterHours !== undefined ? String(this.plugin.settings.deleteAfterHours) : '')
+						.onChange(async (value) => {
+							const trimmed = value.trim();
+							if (trimmed === '' || isNaN(Number(trimmed)) || Number(trimmed) < 1) {
+								this.plugin.settings.deleteAfterHours = undefined;
+							} else {
+								this.plugin.settings.deleteAfterHours = Number(trimmed);
+							}
+							await this.plugin.saveSettings();
+						});
+				});
+
+			new Setting(containerEl)
+				.setName(this.plugin.t('settings.checkInterval'))
+				.setDesc(this.plugin.t('settings.checkIntervalDesc'))
+				.addText((text) => {
+					text
+						.setPlaceholder(String(DEFAULT_SETTINGS.checkIntervalMinutes))
+						.setValue(this.plugin.settings.checkIntervalMinutes !== undefined ? String(this.plugin.settings.checkIntervalMinutes) : '')
+						.onChange(async (value) => {
+							const trimmed = value.trim();
+							if (trimmed === '' || isNaN(Number(trimmed)) || Number(trimmed) < 1) {
+								this.plugin.settings.checkIntervalMinutes = undefined;
+							} else {
+								this.plugin.settings.checkIntervalMinutes = Number(trimmed);
+							}
+							await this.plugin.saveSettings();
+						});
+				});
+		}
 
 		new Setting(containerEl)
 			.setName(this.plugin.t('settings.deleteUniqueAttachments'))
