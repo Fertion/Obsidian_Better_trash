@@ -259,9 +259,9 @@ module.exports = class BetterTrashPlugin extends Plugin {
 		// Обработчик события загрузки метаданных
 		this.registerEvent(
 			this.app.metadataCache.on('resolved', () => {
-				const activeLeaf = this.app.workspace.activeLeaf;
-				if (activeLeaf) {
-					this.handleLeafChange(activeLeaf);
+				const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+				if (activeView) {
+					this.handleLeafChange(activeView.leaf);
 				}
 			})
 		);
@@ -269,18 +269,18 @@ module.exports = class BetterTrashPlugin extends Plugin {
 		// Обработчик события готовности интерфейса
 		this.registerEvent(
 			this.app.workspace.on('layout-ready', () => {
-				const activeLeaf = this.app.workspace.activeLeaf;
-				if (activeLeaf) {
-					this.handleLeafChange(activeLeaf);
+				const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+				if (activeView) {
+					this.handleLeafChange(activeView.leaf);
 				}
 			})
 		);
 
 		// Проверяем активный лист при загрузке плагина с увеличенной задержкой
 		setTimeout(() => {
-			const activeLeaf = this.app.workspace.activeLeaf;
-			if (activeLeaf) {
-				this.handleLeafChange(activeLeaf);
+			const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+			if (activeView) {
+				this.handleLeafChange(activeView.leaf);
 			}
 		}, 500);
 	}
