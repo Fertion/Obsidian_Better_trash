@@ -710,7 +710,6 @@ module.exports = class BetterTrashPlugin extends Plugin {
 		if (!(file instanceof TFile) || file.extension !== 'md') return true;
 
 		try {
-			const content = await this.app.vault.read(file);
 			const now = new Date();
 			const deletedAt = now.getFullYear() + '-' + 
 				String(now.getMonth() + 1).padStart(2, '0') + '-' + 
@@ -718,14 +717,11 @@ module.exports = class BetterTrashPlugin extends Plugin {
 				String(now.getHours()).padStart(2, '0') + ':' + 
 				String(now.getMinutes()).padStart(2, '0') + ':' + 
 				String(now.getSeconds()).padStart(2, '0');
-			
-			// Добавляем или обновляем YAML-свойства
-			const newContent = this.addOrUpdateYamlProperties(content, {
-				[this.settings.deletedAtProperty]: deletedAt,
-				[this.settings.originalPathProperty]: originalPath
-			});
 
-			await this.app.vault.modify(file, newContent);
+			await this.app.fileManager.processFrontMatter(file, (frontmatter) => {
+				frontmatter[this.settings.deletedAtProperty] = deletedAt;
+				frontmatter[this.settings.originalPathProperty] = originalPath;
+			});
 			return true;
 		} catch (error) {
 			console.error('Ошибка при установке YAML-свойств:', error);
@@ -737,123 +733,15 @@ module.exports = class BetterTrashPlugin extends Plugin {
 		if (!(file instanceof TFile) || file.extension !== 'md') return true;
 
 		try {
-			const content = await this.app.vault.read(file);
-			const newContent = this.removeYamlProperties(content, [
-				this.settings.deletedAtProperty,
-				this.settings.originalPathProperty
-			]);
-
-			await this.app.vault.modify(file, newContent);
+			await this.app.fileManager.processFrontMatter(file, (frontmatter) => {
+				delete frontmatter[this.settings.deletedAtProperty];
+				delete frontmatter[this.settings.originalPathProperty];
+			});
 			return true;
 		} catch (error) {
 			console.error('Ошибка при удалении YAML-свойств:', error);
 			return false;
 		}
-	}
-
-	addOrUpdateYamlProperties(content, properties) {
-		const lines = content.split('\n');
-		let yamlStart = -1, yamlEnd = -1;
-		for (let i = 0; i < lines.length; i++) {
-			if (lines[i].trim() === '---') {
-				if (yamlStart === -1) yamlStart = i;
-				else { yamlEnd = i; break; }
-			}
-		}
-		const propKeys = Object.keys(properties);
-		if (yamlStart === -1) {
-			// Нет YAML — создаем
-			const props = [];
-			for (const [key, value] of Object.entries(properties)) {
-				props.push(`${key}: ${value}`);
-			}
-			return ['---', ...props, '---', ...lines].join('\n');
-		}
-		if (yamlEnd === -1) yamlEnd = lines.length - 1;
-		
-		// Оставляем все строки, кроме своих свойств
-		const yamlBlock = [];
-		for (let i = yamlStart + 1; i < yamlEnd; i++) {
-			const line = lines[i];
-			const trimmedLine = line.trim();
-			
-			// Проверяем, является ли это нашим свойством
-			const isOurProperty = propKeys.some(k => trimmedLine.startsWith(k + ':'));
-			
-			if (!isOurProperty) {
-				yamlBlock.push(line);
-			}
-		}
-		
-		// Вставляем свои свойства в начало YAML-блока
-		const props = [];
-		for (const [key, value] of Object.entries(properties)) {
-			props.push(`${key}: ${value}`);
-		}
-		const newYaml = ['---', ...props, ...yamlBlock, '---'];
-		return [
-			...lines.slice(0, yamlStart),
-			...newYaml,
-			...lines.slice(yamlEnd + 1)
-		].join('\n');
-	}
-
-	removeYamlProperties(content, propertiesToRemove) {
-		const lines = content.split('\n');
-		let yamlStartIndex = -1;
-		let yamlEndIndex = -1;
-		let inYaml = false;
-
-		// Находим границы YAML-блока
-		for (let i = 0; i < lines.length; i++) {
-			const line = lines[i].trim();
-			if (line === '---') {
-				if (!inYaml) {
-					yamlStartIndex = i;
-					inYaml = true;
-				} else {
-					yamlEndIndex = i;
-					break;
-				}
-			}
-		}
-
-		// Если YAML-блока нет, возвращаем исходный контент
-		if (yamlStartIndex === -1) return content;
-		if (yamlEndIndex === -1) yamlEndIndex = lines.length;
-
-		const propertiesToRemoveSet = new Set(propertiesToRemove);
-		const remainingLines = [];
-
-		for (let i = yamlStartIndex + 1; i < yamlEndIndex; i++) {
-			const line = lines[i];
-			const trimmedLine = line.trim();
-			// Оставляем все строки, кроме явно удаляемых свойств
-			const colonIndex = line.indexOf(':');
-			if (colonIndex !== -1) {
-				const key = line.substring(0, colonIndex).trim();
-				if (!propertiesToRemoveSet.has(key)) {
-					remainingLines.push(line);
-				}
-			} else {
-				remainingLines.push(line);
-			}
-		}
-
-		const hasRemainingProperties = remainingLines.length > 0;
-
-		// Если в YAML-блоке не осталось свойств, удаляем его полностью
-		if (!hasRemainingProperties) {
-			const beforeYaml = lines.slice(0, yamlStartIndex);
-			const afterYaml = lines.slice(yamlEndIndex + 1);
-			return [...beforeYaml, ...afterYaml].join('\n');
-		}
-
-		// Создаем новый YAML-блок
-		const newYamlLines = ['---', ...remainingLines, '---'];
-		const beforeYaml = lines.slice(0, yamlStartIndex);
-		const afterYaml = lines.slice(yamlEndIndex + 1);
-		return [...beforeYaml, ...newYamlLines, ...afterYaml].join('\n');
 	}
 
 	// Получение уникальных вложений файла (на которые нет ссылок из других файлов)
