@@ -255,9 +255,11 @@ module.exports = class BetterTrashPlugin extends Plugin {
 		);
 		
 		// Обработчик события переименования (rename)
-		this.app.vault.on('rename', (file, oldPath) => {
-			this.handleRename(file, oldPath);
-		});
+		this.registerEvent(
+			this.app.vault.on('rename', (file, oldPath) => {
+				this.handleRename(file, oldPath);
+			})
+		);
 
 		// Обработчик события загрузки метаданных
 		this.registerEvent(
