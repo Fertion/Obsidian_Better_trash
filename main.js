@@ -23,7 +23,7 @@ const DEFAULT_SETTINGS = {
 const LANGUAGES = {
 	ru: {
 		settings: {
-			title: 'Настройки Better Trash',
+			title: 'Better trash',
 			trashFolder: 'Папка для удалённых файлов',
 			trashFolderDesc: 'Укажите папку, куда будут перемещаться удалённые файлы. По умолчанию: Trash',
 			deleteAfterHours: 'Время хранения файлов в корзине (в часах)',
@@ -80,7 +80,7 @@ const LANGUAGES = {
 	},
 	en: {
 		settings: {
-			title: 'Better Trash Settings',
+			title: 'Better trash',
 			trashFolder: 'Trash folder',
 			trashFolderDesc: 'Specify the folder where deleted files will be moved. Default: Trash',
 			deleteAfterHours: 'File retention time in trash (hours)',
@@ -1086,7 +1086,11 @@ class BetterTrashSettingTab extends PluginSettingTab {
 		const { containerEl } = this;
 		containerEl.empty();
 
-		containerEl.createEl('h2', { text: this.plugin.t('settings.title') });
+		// Было: containerEl.createEl('h2', { text: this.plugin.t('settings.title') });
+		// Теперь: используем .setHeading() у первого Setting
+		new Setting(containerEl)
+			.setHeading()
+			.setName(this.plugin.t('settings.title'));
 
 		// Переключатель языка (в самом верху)
 		new Setting(containerEl)
