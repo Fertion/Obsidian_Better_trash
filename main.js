@@ -7,6 +7,7 @@ const {
 	MarkdownView,
 	Component,
 } = require('obsidian');
+const { normalizePath } = require('obsidian');
 
 const DEFAULT_SETTINGS = {
 	trashFolder: 'Trash',
@@ -330,9 +331,9 @@ module.exports = class BetterTrashPlugin extends Plugin {
 	// Обработчик переименования – используется для отслеживания ручного перемещения файла в корзину
 	async handleRename(file, oldPath) {
 		if (file instanceof TFile && file.extension === 'md') {
-			const newFilePathNormalized = this.normalizePath(file.path);
-			const oldFilePathNormalized = this.normalizePath(oldPath);
-			const trashFolderPath = this.normalizePath(this.settings.trashFolder);
+			const newFilePathNormalized = normalizePath(file.path);
+			const oldFilePathNormalized = normalizePath(oldPath);
+			const trashFolderPath = normalizePath(this.settings.trashFolder);
 
 			// Проверяем, был ли файл недавно перемещен плагином
 			const now = Date.now();
@@ -414,8 +415,8 @@ module.exports = class BetterTrashPlugin extends Plugin {
 		}
 
 		if (!this.settings.trashFolder) return;
-		const trashFolderPath = this.normalizePath(this.settings.trashFolder);
-		const filePath = this.normalizePath(file.path);
+		const trashFolderPath = normalizePath(this.settings.trashFolder);
+		const filePath = normalizePath(file.path);
 
 		// Отображаем плашку только если файл находится в корзине и имеет YAML-свойства
 		if (!filePath.startsWith(trashFolderPath)) {
@@ -455,7 +456,7 @@ module.exports = class BetterTrashPlugin extends Plugin {
 			new Notice(this.t('notices.trashFolderNotSet'));
 			return;
 		}
-		const trashFolderPath = this.normalizePath(this.settings.trashFolder);
+		const trashFolderPath = normalizePath(this.settings.trashFolder);
 		if (!filePath.startsWith(trashFolderPath)) {
 			new Notice(this.t('notices.fileNotInTrash'));
 			return;
@@ -481,7 +482,7 @@ module.exports = class BetterTrashPlugin extends Plugin {
 			new Notice(this.t('notices.trashFolderNotSet'));
 			return;
 		}
-		const trashFolderPath = this.normalizePath(this.settings.trashFolder);
+		const trashFolderPath = normalizePath(this.settings.trashFolder);
 		if (!filePath.startsWith(trashFolderPath)) {
 			new Notice(this.t('notices.fileNotInTrash'));
 			return;
@@ -501,7 +502,7 @@ module.exports = class BetterTrashPlugin extends Plugin {
 
 			// Очищаем плашку
 			this.app.workspace.iterateAllLeaves((leaf) => {
-				if (leaf.view instanceof MarkdownView && leaf.view.file && this.normalizePath(leaf.view.file.path) === this.normalizePath(filePath)) {
+				if (leaf.view instanceof MarkdownView && leaf.view.file && normalizePath(leaf.view.file.path) === normalizePath(filePath)) {
 					this.clearTrashInfoForLeaf(leaf);
 				}
 			});
@@ -521,8 +522,8 @@ module.exports = class BetterTrashPlugin extends Plugin {
 			new Notice(this.t('notices.trashFolderNotSet'));
 			return;
 		}
-		const trashFolderPath = this.normalizePath(this.settings.trashFolder);
-		const filePath = this.normalizePath(activeFile.path);
+		const trashFolderPath = normalizePath(this.settings.trashFolder);
+		const filePath = normalizePath(activeFile.path);
 
 		if (!filePath.startsWith(trashFolderPath)) {
 			new Notice(this.t('notices.fileNotInTrash'));
@@ -606,8 +607,8 @@ module.exports = class BetterTrashPlugin extends Plugin {
 			new Notice(this.t('notices.trashFolderNotSet'));
 			return;
 		}
-		const trashFolderPath = this.normalizePath(this.settings.trashFolder);
-		const filePath = this.normalizePath(file.path);
+		const trashFolderPath = normalizePath(this.settings.trashFolder);
+		const filePath = normalizePath(file.path);
 
 		// Если файл уже находится в корзине – удаляем безвозвратно
 		if (filePath.startsWith(trashFolderPath)) {
@@ -627,7 +628,7 @@ module.exports = class BetterTrashPlugin extends Plugin {
 
 	async moveFileToTrash(file, originalPath) {
 		const vault = this.app.vault;
-		const trashFolderPath = this.normalizePath(this.settings.trashFolder);
+		const trashFolderPath = normalizePath(this.settings.trashFolder);
 		
 		// Создаем папку корзины, если её нет
 		if (!vault.getAbstractFileByPath(trashFolderPath)) {
@@ -664,12 +665,12 @@ module.exports = class BetterTrashPlugin extends Plugin {
 	}
 
 	async getAllTrashFiles() {
-		const trashFolderPath = this.normalizePath(this.settings.trashFolder);
+		const trashFolderPath = normalizePath(this.settings.trashFolder);
 		const allFiles = this.app.vault.getFiles();
 		const trashFiles = [];
 
 		for (const file of allFiles) {
-			const filePath = this.normalizePath(file.path);
+			const filePath = normalizePath(file.path);
 			if (filePath.startsWith(trashFolderPath) && file.extension === 'md') {
 				const trashInfo = await this.getFileTrashInfo(file);
 				if (trashInfo) {
@@ -682,10 +683,6 @@ module.exports = class BetterTrashPlugin extends Plugin {
 		}
 
 		return trashFiles;
-	}
-
-	normalizePath(path) {
-		return path.replace(/\\/g, '/').replace(/\/+/g, '/');
 	}
 
 	// Методы для работы с YAML-свойствами
@@ -766,11 +763,11 @@ module.exports = class BetterTrashPlugin extends Plugin {
 
 				for (const sourceFile in resolvedLinks) {
 					// Пропускаем сам файл
-					if (this.normalizePath(sourceFile) === this.normalizePath(file.path)) continue;
+					if (normalizePath(sourceFile) === normalizePath(file.path)) continue;
 
 					const targets = resolvedLinks[sourceFile];
 					for (const targetFile in targets) {
-						if (this.normalizePath(targetFile) === this.normalizePath(linkedFile.path)) {
+						if (normalizePath(targetFile) === normalizePath(linkedFile.path)) {
 							hasExternalLinks = true;
 							break;
 						}
@@ -875,9 +872,9 @@ module.exports = class BetterTrashPlugin extends Plugin {
 		}
 
 		// Обработка файлов в корзине, которых нет в YAML-свойствах
-		const trashFolderPath = this.normalizePath(this.settings.trashFolder);
+		const trashFolderPath = normalizePath(this.settings.trashFolder);
 		const filesInTrash = this.app.vault.getFiles().filter((file) => {
-			return this.normalizePath(file.path).startsWith(trashFolderPath) && file.extension === 'md';
+			return normalizePath(file.path).startsWith(trashFolderPath) && file.extension === 'md';
 		});
 
 		for (const fileInTrash of filesInTrash) {
