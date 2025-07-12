@@ -1,7 +1,7 @@
 {
 	"id": "better_trash",
 	"name": "Better Trash",
-	"version": "1.0.3",
+	"version": "1.0.4",
 	"minAppVersion": "1.8.10",
 	"description": "Advanced trash with file viewing, automatic cleanup, and original path restoration",
 	"author": "Fertion",
