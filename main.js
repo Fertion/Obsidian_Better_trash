@@ -166,13 +166,6 @@ class TrashInfoComponent extends Component {
 		const container = this.leaf.containerEl.createDiv({ cls: 'trash-info-container' });
 		this.containerEl = container;
 
-		// Стили для темно-красного прозрачного фона
-		container.style.backgroundColor = 'rgba(139, 0, 0, 0.3)';
-		container.style.padding = '10px';
-		container.style.borderRadius = '5px';
-		container.style.marginTop = '10px';
-		container.style.marginBottom = '5px';
-
 		const textContainer = container.createDiv(); // Контейнер для текста
 		const deletedEl = textContainer.createEl('p');
 		deletedEl.textContent = `${this.plugin.t('ui.movedToTrash')} ${deletionDate.toLocaleString()}`;
@@ -185,15 +178,13 @@ class TrashInfoComponent extends Component {
 		}
 		deleteEl.textContent = `${this.plugin.t('ui.willBeDeleted')} ${deleteTimeText}`;
 
-		const buttonsContainer = container.createDiv();  // Контейнер для кнопок
-		buttonsContainer.style.display = 'flex';      // flexbox
-		buttonsContainer.style.flexDirection = 'row'; //  Строка (row) - кнопки в ряд
-		buttonsContainer.style.gap = '10px';           //  Отступы между кнопками
-		buttonsContainer.style.alignItems = 'center'; // Выравнивание по центру (по вертикали)
-		buttonsContainer.style.marginTop = '5px';
+		const buttonsContainer = container.createDiv({ cls: 'trash-buttons-container' });  // Контейнер для кнопок
 
 		// Кнопка восстановления
-		const restoreButton = buttonsContainer.createEl('button', { text: this.plugin.t('ui.restore') });
+		const restoreButton = buttonsContainer.createEl('button', { 
+			text: this.plugin.t('ui.restore'),
+			cls: 'trash-restore-button'
+		});
 		restoreButton.addEventListener('mousedown', async (e) => {
 			e.preventDefault();
 			e.stopPropagation();
@@ -203,9 +194,10 @@ class TrashInfoComponent extends Component {
 		});
 
 		// Кнопка "Удалить безвозвратно"
-		const deletePermanentlyButton = buttonsContainer.createEl('button', { text: this.plugin.t('ui.deletePermanently') });
-		deletePermanentlyButton.style.backgroundColor = 'darkred'; // Тёмно-красный фон
-		deletePermanentlyButton.style.color = 'white'; // Белый текст
+		const deletePermanentlyButton = buttonsContainer.createEl('button', { 
+			text: this.plugin.t('ui.deletePermanently'),
+			cls: 'trash-delete-permanently-button'
+		});
 		deletePermanentlyButton.addEventListener('mousedown', async (e) => {
 			e.preventDefault();
 			e.stopPropagation();
@@ -236,6 +228,9 @@ module.exports = class BetterTrashPlugin extends Plugin {
 
 	async onload() {
 		await this.loadSettings();
+
+		// Загружаем CSS стили
+		this.loadStyles();
 
 		this.addSettingTab(new BetterTrashSettingTab(this.app, this));
 		this.patchDeletionMethods();
@@ -300,6 +295,12 @@ module.exports = class BetterTrashPlugin extends Plugin {
 		this.clearTrashInfoContainers();
 		this.stopCheckInterval();
 		this.movedFiles.clear(); // Очищаем movedFiles
+		
+		// Удаляем добавленные стили
+		const styleEl = document.getElementById('better-trash-styles');
+		if (styleEl) {
+			styleEl.remove();
+		}
 	}
 
 	// Метод для запуска интервала проверки
@@ -895,6 +896,89 @@ module.exports = class BetterTrashPlugin extends Plugin {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
 	}
 
+	loadStyles() {
+		// Добавляем CSS стили через создание элемента style
+		const styleEl = document.createElement('style');
+		styleEl.id = 'better-trash-styles';
+		styleEl.textContent = `
+			/* Better Trash Plugin Styles */
+			
+			/* Контейнер информации о корзине */
+			.trash-info-container {
+				background-color: rgba(139, 0, 0, 0.3);
+				padding: 10px;
+				border-radius: 5px;
+				margin-top: 10px;
+				margin-bottom: 5px;
+			}
+			
+			/* Контейнер для кнопок */
+			.trash-buttons-container {
+				display: flex;
+				flex-direction: row;
+				gap: 10px;
+				align-items: center;
+				margin-top: 5px;
+			}
+			
+			/* Кнопка восстановления */
+			.trash-restore-button {
+				/* Используем стандартные стили Obsidian для кнопок */
+			}
+			
+			/* Кнопка безвозвратного удаления - более специфичные селекторы */
+			button.trash-delete-permanently-button {
+				background-color: darkred !important;
+				color: white !important;
+				border-color: darkred !important;
+			}
+			
+			button.trash-delete-permanently-button:hover {
+				background-color: #8b0000 !important;
+				color: white !important;
+			}
+			
+			button.trash-delete-permanently-button:active {
+				background-color: #660000 !important;
+				color: white !important;
+			}
+			
+			/* Альтернативный селектор для максимальной специфичности */
+			.trash-info-container .trash-buttons-container button.trash-delete-permanently-button {
+				background-color: darkred !important;
+				color: white !important;
+				border-color: darkred !important;
+			}
+			
+			/* Еще более специфичный селектор */
+			body .trash-info-container .trash-buttons-container button.trash-delete-permanently-button {
+				background-color: darkred !important;
+				color: white !important;
+				border-color: darkred !important;
+			}
+			
+			/* Стили для всех состояний кнопки */
+			body .trash-info-container .trash-buttons-container button.trash-delete-permanently-button:hover,
+			body .trash-info-container .trash-buttons-container button.trash-delete-permanently-button:focus,
+			body .trash-info-container .trash-buttons-container button.trash-delete-permanently-button:active {
+				background-color: #8b0000 !important;
+				color: white !important;
+				border-color: #8b0000 !important;
+			}
+			
+			/* Стили для полей ввода с ошибкой */
+			.trash-input-error {
+				border-color: red !important;
+			}
+			
+			/* Стили для полей ввода без ошибки */
+			.trash-input-normal {
+				border-color: var(--background-modifier-border) !important;
+			}
+		`;
+		document.head.appendChild(styleEl);
+	}
+
 	async saveSettings() {
 		// Валидация числовых значений
 		if (typeof this.settings.deleteAfterHours !== 'number' || this.settings.deleteAfterHours < 1) {
@@ -1000,22 +1084,31 @@ class BetterTrashSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName(this.plugin.t('settings.trashFolder'))
 			.setDesc(this.plugin.t('settings.trashFolderDesc'))
-			.addText((text) =>
+			.addText((text) => {
+				// Инициализируем CSS-класс для поля ввода
+				if (this.plugin.settings.trashFolder && this.plugin.settings.trashFolder.trim().length > 0) {
+					text.inputEl.classList.add('trash-input-normal');
+				} else {
+					text.inputEl.classList.add('trash-input-error');
+				}
+				
 				text
 					.setPlaceholder('Trash')
 					.setValue(this.plugin.settings.trashFolder)
 					.onChange(async (value) => {
 						const trimmed = value.trim();
 						if (trimmed.length === 0) {
-							text.inputEl.style.borderColor = 'red';
+							text.inputEl.classList.add('trash-input-error');
+							text.inputEl.classList.remove('trash-input-normal');
 							return;
 						} else {
-							text.inputEl.style.borderColor = '';
+							text.inputEl.classList.remove('trash-input-error');
+							text.inputEl.classList.add('trash-input-normal');
 						}
 						this.plugin.settings.trashFolder = trimmed;
 						await this.plugin.saveSettings();
-					})
-			);
+					});
+			});
 
 		// Затем переключатель автоочистки
 		const autoDeleteSetting = new Setting(containerEl)
@@ -1085,42 +1178,60 @@ class BetterTrashSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName(this.plugin.t('settings.deletedAtProperty'))
 			.setDesc(this.plugin.t('settings.deletedAtPropertyDesc'))
-			.addText((text) =>
+			.addText((text) => {
+				// Инициализируем CSS-класс для поля ввода
+				if (this.plugin.settings.deletedAtProperty && this.plugin.settings.deletedAtProperty.trim().length > 0) {
+					text.inputEl.classList.add('trash-input-normal');
+				} else {
+					text.inputEl.classList.add('trash-input-error');
+				}
+				
 				text
 					.setPlaceholder('deleted_at')
 					.setValue(this.plugin.settings.deletedAtProperty)
 					.onChange(async (value) => {
 						const trimmed = value.trim();
 						if (trimmed.length === 0) {
-							text.inputEl.style.borderColor = 'red';
+							text.inputEl.classList.add('trash-input-error');
+							text.inputEl.classList.remove('trash-input-normal');
 							return;
 						} else {
-							text.inputEl.style.borderColor = '';
+							text.inputEl.classList.remove('trash-input-error');
+							text.inputEl.classList.add('trash-input-normal');
 						}
 						this.plugin.settings.deletedAtProperty = trimmed;
 						await this.plugin.saveSettings();
-					})
-			);
+					});
+			});
 
 		new Setting(containerEl)
 			.setName(this.plugin.t('settings.originalPathProperty'))
 			.setDesc(this.plugin.t('settings.originalPathPropertyDesc'))
-			.addText((text) =>
+			.addText((text) => {
+				// Инициализируем CSS-класс для поля ввода
+				if (this.plugin.settings.originalPathProperty && this.plugin.settings.originalPathProperty.trim().length > 0) {
+					text.inputEl.classList.add('trash-input-normal');
+				} else {
+					text.inputEl.classList.add('trash-input-error');
+				}
+				
 				text
 					.setPlaceholder('original_path')
 					.setValue(this.plugin.settings.originalPathProperty)
 					.onChange(async (value) => {
 						const trimmed = value.trim();
 						if (trimmed.length === 0) {
-							text.inputEl.style.borderColor = 'red';
+							text.inputEl.classList.add('trash-input-error');
+							text.inputEl.classList.remove('trash-input-normal');
 							return;
 						} else {
-							text.inputEl.style.borderColor = '';
+							text.inputEl.classList.remove('trash-input-error');
+							text.inputEl.classList.add('trash-input-normal');
 						}
 						this.plugin.settings.originalPathProperty = trimmed;
 						await this.plugin.saveSettings();
-					})
-			);
+					});
+			});
 
 		// Кнопка для ручной проверки корзины
 		new Setting(containerEl)
